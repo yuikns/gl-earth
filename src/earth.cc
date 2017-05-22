@@ -141,14 +141,14 @@ void DrawEarth(GLfloat x, GLfloat y, GLfloat radius, GLContext* ctx) {
 // 真是没办法
 // 因此我使用 SDL2 的库
 // https://www.libsdl.org/
-// Simple DirectMedia Layer is a cross-platform 
+// Simple DirectMedia Layer is a cross-platform
 // development library designed to provide low level access
 // to audio, keyboard, mouse, joystick, and graphics hardware
 // via OpenGL and Direct3D. It is used by video playback
 // software, emulators, and popular games including Valve's
 // award winning catalog and many Humble Bundle games.
 // 使用前, 全局至少加载一次
-int loadTexture(const std::string& path) {
+int LoadTexture(const std::string& path) {
   GLuint texture_id;
   glGenTextures(1, &texture_id);
   glBindTexture(GL_TEXTURE_2D, texture_id);
@@ -170,6 +170,7 @@ int loadTexture(const std::string& path) {
   return texture_id;
 }
 
+// 打印说明
 void PrintHelper() {
   printf("Compiled against GLFW %i.%i.%i\n", GLFW_VERSION_MAJOR,
          GLFW_VERSION_MINOR, GLFW_VERSION_REVISION);
@@ -190,28 +191,33 @@ int main(int argc, char* argv[]) {
   GLFWwindow* window;
   GLContext context;
 
-  /* Initialize the library */
+  // 初始化 glfw
   if (!glfwInit()) {
     fprintf(stderr, "GLFW3 init failed\n");
     return -1;
   }
 
+  // 初始化 SDL 的 image, 这样它可以加载 JPG, PNG 和 TIF
   if (!IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF)) {
     fprintf(stderr, "IMG init failed: %s %s:%d\n", IMG_GetError(), __FILE__,
             __LINE__);
     return -1;
   }
 
-  // Create a windowed mode window and its OpenGL context
+  // 创建一个窗口, 宽度, 长度, 标题等
   window = glfwCreateWindow(640, 480, "My Earth", NULL, NULL);
   if (!window) {
     glfwTerminate();
     return -1;
   }
 
+  // 绑定 context, 用于之后取
+  // 这是一种在里面取当前状态的时候用的一个方法
+  // 用全局变量太丑了
   // http://www.glfw.org/docs/latest/group__window.html#ga3d2fc6026e690ab31a13f78bc9fd3651
   glfwSetWindowUserPointer(window, &context);
 
+  // 焦点放在这个窗口
   // Make the window's context current
   // http://www.glfw.org/docs/latest/group__context.html#ga1c04dc242268f827290fe40aa1c91157
   glfwMakeContextCurrent(window);
@@ -219,14 +225,20 @@ int main(int argc, char* argv[]) {
   // http://www.glfw.org/docs/latest/group__context.html#ga6d4e0cdf151b5e579bd67f13202994ed
   glfwSwapInterval(1);
 
+  // 若 GLFW 出现错误, 回调(callback) 这个窗口
+  // 回调是 c 里面早就有的功能, 不过 c++11 的新的
+  // feature lambda 兼容了这个回调
+  // 具体参考此处: http://en.cppreference.com/w/cpp/language/lambda
   // http://www.glfw.org/docs/latest/group__init.html#gaa5d796c3cf7c1a7f02f845486333fb5f
   glfwSetErrorCallback([](int error, const char* description) {
     fprintf(stderr, "[GLFW] error message: %s\n", description);
   });
 
+  // 焦点为窗口的时候, 是否隐藏鼠标?
   // http://www.glfw.org/docs/3.0/group__input.html#gaa92336e173da9c8834558b54ee80563b
   // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+  // 键盘事件回调
   // http://www.glfw.org/docs/latest/group__input.html#ga7e496507126f35ea72f01b2e6ef6d155
   glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode,
                                 int action, int mods) {
@@ -238,6 +250,8 @@ int main(int argc, char* argv[]) {
     //        KeyCallbackModParse(mods).c_str(), rsec);
     // fflush(NULL);
 
+    // action: GLFW_PRESS 表示按下, GLFW_REPEAT 表示按着不放, 一段时间后
+    // 再次触发
     GLContext* ctx = static_cast<GLContext*>(glfwGetWindowUserPointer(window));
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
       switch (key) {
@@ -285,6 +299,7 @@ int main(int argc, char* argv[]) {
 
   });
 
+  // 滚轮事件
   // http://www.glfw.org/docs/3.0/group__input.html#gacf02eb10504352f16efda4593c3ce60e
   glfwSetScrollCallback(window, [](GLFWwindow* window, double x_axis,
                                    double y_axis) {
@@ -298,6 +313,7 @@ int main(int argc, char* argv[]) {
     }
   });
 
+  // 鼠标事件
   // http://www.glfw.org/docs/3.0/group__input.html#gaef49b72d84d615bca0a6ed65485e035d
   glfwSetMouseButtonCallback(
       window, [](GLFWwindow* window, int button, int action, int mods) {
@@ -306,12 +322,15 @@ int main(int argc, char* argv[]) {
         fflush(NULL);
       });
 
+  // 鼠标是否在我们的窗口上?
+  // 进入和离开事件
   // http://www.glfw.org/docs/3.0/group__input.html#gaa299c41dd0a3d171d166354e01279e04
   glfwSetCursorEnterCallback(window, [](GLFWwindow* window, int entered) {
     printf("[CURSOR] %s\n", entered == GL_TRUE ? "GL_TRUE" : "GL_FALSE");
     fflush(NULL);
   });
 
+  // 当前鼠标位置
   // http://www.glfw.org/docs/3.0/group__input.html#ga7dad39486f2c7591af7fb25134a2501d
   glfwSetCursorPosCallback(
       window, [](GLFWwindow* window, double x_coordinate, double y_coordinate) {
@@ -319,13 +338,17 @@ int main(int argc, char* argv[]) {
         // fflush(NULL);
       });
 
-  context.texture_id() = loadTexture("../resource/earth-modified.png");
+  // 载入材质
+  // 全局只需要载入 1 次
+  context.texture_id() = LoadTexture("../resource/earth-modified.png");
 
   int csec = 0;
   int scnt = 0;
+  // 保持循环, 直到窗口被关闭
   // Loop until the user closes the window
   // http://www.glfw.org/docs/latest/group__window.html#ga24e02fbfefbb81fc45320989f8140ab5
   while (!glfwWindowShouldClose(window)) {
+    // 检查当前时间
     int rsec = (int)glfwGetTime();
     scnt++;
     if (rsec - csec > 3) {
@@ -336,7 +359,7 @@ int main(int argc, char* argv[]) {
       scnt = 0;
     }
 
-    // render here
+    // 构造界面开始
     float ratio;
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
@@ -353,11 +376,25 @@ int main(int argc, char* argv[]) {
     glMatrixMode(GL_MODELVIEW);  // Applies subsequent matrix operations to the
                                  // modelview matrix stack.
     glLoadIdentity();
+    // 此处, 我们旋转自己的 view
     glRotatef((float)glfwGetTime() * 50.f * context.speed() + context.offset(),
               0.f, 0.f, 1.f);
 
+    // 关于世界观, 我找了下, 这个文档可能是一个不错的说明:
+    // https://learnopengl-cn.github.io/01%20Getting%20started/08%20Coordinate%20Systems/
+
+    // 构造界面结束
+
+    // 实际上, 我做了个 tricky 的操作
+    // 太阳永远是在 0,0 即正中心,
+    // 而地球是在 (x, 0), (x + r, 0), (x, 0+r), (x + r, 0 + r)
+    // 四个点对应的正方形那儿贴的图
+    // 我旋转的其实是我们的观察视角 :)
+
+    // 画地球
     DrawEarth(0.6f, 0.f, context.earth_size(), &context);
 
+    // 画太阳
     DrawSun(0.2f, &context);
 
     // Swap front and back buffers
@@ -368,6 +405,8 @@ int main(int argc, char* argv[]) {
     // http://www.glfw.org/docs/latest/group__window.html#ga37bd57223967b4211d60ca1a0bf3c832
     glfwPollEvents();
   }
+
+  // 结束~
   printf("Bye!\n");
 
   // http://www.glfw.org/docs/latest/group__window.html#gacdf43e51376051d2c091662e9fe3d7b2
